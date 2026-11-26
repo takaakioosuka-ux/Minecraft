@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>マイクラ統合版 エンチャント金床合成支援ツール</title>
+  <!-- Minecraft風ドット日本語フォント -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --mc-white: #FFFFFF;
+      --mc-yellow: #FFFF55;
+      --mc-aqua: #55FFFF;
+      --mc-green: #55FF55;
+      --mc-red: #FF5555;
+      --mc-gold: #FFAA00;
+      --mc-gray: #AAAAAA;
+      --mc-dark-gray: #555555;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: 'DotGothic16', monospace, sans-serif;
+    }
+
+    /* マイクラ風テキストドロップシャドウ */
+    .mc-shadow {
+      text-shadow: 2px 2px 0px #1e1e1e;
+    }
+    .mc-shadow-sm {
+      text-shadow: 1.5px 1.5px 0px #1e1e1e;
+    }
+
+    /* 1. 土ブロックテクスチャ背景（地上断面：上部に草ブロック層＋下に土ブロック層） */
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #593d29;
+      background-image:
+        /* 草の縁取りグラデーション */
+        linear-gradient(to bottom,
+          #5d9b37 0px, #5d9b37 24px,
+          #467a27 24px, #467a27 32px,
+          transparent 32px
+        ),
+        /* 土ブロックのドットノイズ風パターン */
+        radial-gradient(#47301f 15%, transparent 16%),
+        radial-gradient(#6e4c34 15%, transparent 16%),
+        radial-gradient(#7d7570 12%, transparent 13%),
+        radial-gradient(#3b2618 15%, transparent 16%);
+      background-size:
+        100% 100%,
+        32px 32px,
+        32px 32px,
+        64px 64px,
+        48px 48px;
+      background-position:
+        0 0,
+        0 0,
+        16px 16px,
+        8px 24px,
+        24px 8px;
+      background-attachment: fixed;
+      color: var(--mc-white);
+      min-height: 100vh;
+    }
+
+    /* 2. 原木・木材テクスチャパネル */
+    .mc-wood-panel {
+      background-color: #7c5832;
+      background-image:
+        repeating-linear-gradient(
+          0deg,
+          rgba(56, 37, 17, 0.35) 0px,
+          rgba(56, 37, 17, 0.35) 4px,
+          transparent 4px,
+          transparent 24px
+        ),
+        repeating-linear-gradient(
+          90deg,
+          rgba(155, 114, 68, 0.2) 0px,
+          rgba(155, 114, 68, 0.2) 12px,
+          rgba(82, 55, 27, 0.2) 12px,
+          rgba(82, 55, 27, 0.2) 24px
+        );
+    }
+
+    /* 3. 丸石テクスチャパネル */
+    .mc-cobble-panel {
+      background-color: #4a4a4a;
+      background-image:
+        linear-gradient(335deg, rgba(30,30,30,0.45) 12px, transparent 12px),
+        linear-gradient(155deg, rgba(110,110,110,0.35) 12px, transparent 12px),
+        linear-gradient(335deg, rgba(30,30,30,0.45) 12px, transparent 12px),
+        linear-gradient(155deg, rgba(110,110,110,0.35) 12px, transparent 12px);
+      background-size: 36px 36px;
+      background-position: 0px 2px, 4px 22px, 18px 20px, 22px 4px;
+    }
+
+    /* 4. 額縁風の茶色い太い枠（アイテムフレーム風ベベル） */
+    .mc-item-frame {
+      border: 8px solid #6b4423;
+      box-shadow:
+        inset 4px 4px 0px #9c683a,
+        inset -4px -4px 0px #3e2410,
+        0 6px 0px rgba(0, 0, 0, 0.55);
+      border-radius: 4px;
+    }
+
+    /* 額縁内の革・背景エリア */
+    .mc-frame-inner {
+      background-color: #2b231d;
+      background-image:
+        radial-gradient(rgba(255,255,255,0.03) 1px, transparent 0);
+      background-size: 16px 16px;
+      border: 4px solid #3e2410;
+      box-shadow: inset 3px 3px 0px #1a1410;
+    }
+
+    /* 5. 草ブロック風凹凸メインボタン */
+    .mc-btn-grass {
+      position: relative;
+      background: linear-gradient(to bottom, #63a83b 0%, #63a83b 28%, #528c30 28%, #528c30 34%, #79553a 34%, #694830 100%);
+      border: 4px solid #261b12;
+      box-shadow:
+        inset 4px 4px 0px #8be058,
+        inset -4px -4px 0px #422c1c,
+        0 5px 0px #1d140d;
+      color: #FFFFFF;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.1s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+    .mc-btn-grass:hover {
+      filter: brightness(1.08);
+    }
+    .mc-btn-grass:active,
+    .mc-btn-grass.active-tab {
+      transform: translateY(3px);
+      box-shadow:
+        inset 4px 4px 0px #8be058,
+        inset -4px -4px 0px #422c1c,
+        0 2px 0px #1d140d;
+      outline: 3px solid #FFFF55;
+    }
+
+    /* 6. 丸石風凹凸ボタン */
+    .mc-btn-cobble {
+      position: relative;
+      background-color: #7a7a7a;
+      background-image:
+        radial-gradient(circle at 20% 30%, #8f8f8f 4px, transparent 5px),
+        radial-gradient(circle at 75% 65%, #636363 5px, transparent 6px),
+        radial-gradient(circle at 50% 20%, #5c5c5c 4px, transparent 5px);
+      border: 4px solid #222222;
+      box-shadow:
+        inset 4px 4px 0px #a8a8a8,
+        inset -4px -4px 0px #4a4a4a,
+        0 5px 0px #181818;
+      color: #FFFFFF;
+      transition: transform 0.08s ease, box-shadow 0.08s ease, filter 0.1s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+    .mc-btn-cobble:hover {
+      filter: brightness(1.08);
+    }
+    .mc-btn-cobble:active,
+    .mc-btn-cobble.active-tab {
+      transform: translateY(3px);
+      box-shadow:
+        inset 4px 4px 0px #a8a8a8,
+        inset -4px -4px 0px #4a4a4a,
+        0 2px 0px #181818;
+      outline: 3px solid #55FFFF;
+    }
+
+    /* 装備スロット風ボックス */
+    .mc-slot {
+      background-color: #8b8b8b;
+      border-top: 3px solid #373737;
+      border-left: 3px solid #373737;
+      border-right: 3px solid #ffffff;
+      border-bottom: 3px solid #ffffff;
+      transition: all 0.1s ease;
+      cursor: pointer;
+    }
+    .mc-slot:hover {
+      background-color: #9e9e9e;
+    }
+    .mc-slot.selected {
+      background-color: #527a3c;
+      border-top: 3px solid #28421b;
+      border-left: 3px solid #28421b;
+      border-right: 3px solid #9be870;
+      border-bottom: 3px solid #9be870;
+      box-shadow: 0 0 0 2px #FFFF55;
+    }
+
+    /* エンチャントチェックボックス行 */
+    .ench-row {
+      background-color: #362c25;
+      border: 3px solid #574335;
+      transition: all 0.12s ease;
+    }
+    .ench-row:hover:not(.is-conflicted) {
+      background-color: #473930;
+      border-color: #8c6c54;
+    }
+    .ench-row.is-checked {
+      background-color: #26422b;
+      border-color: #55FF55;
+      box-shadow: inset 0 0 10px rgba(85, 255, 85, 0.25);
+    }
+    .ench-row.is-conflicted {
+      background-color: #241b1b;
+      border-color: #6b2929;
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    /* カスタムチェックボックス（マイクラ風四角） */
+    .mc-checkbox {
+      width: 24px;
+      height: 24px;
+      background-color: #222;
+      border: 3px solid #777;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .is-checked .mc-checkbox {
+      background-color: #3b8526;
+      border-color: #55FF55;
+    }
+
+    /* エンチャント本の紫オーラ風バッジ */
+    .enchanted-glint {
+      background: linear-gradient(135deg, #3c1f5e 0%, #5b2c8c 50%, #3c1f5e 100%);
+      border: 2px solid #b565ff;
+      box-shadow: 0 0 8px rgba(181, 101, 255, 0.45);
+    }
+  </style>
+</head>
+<body class="pb-12">
+
+  <!-- ヘッダー看板（原木＋額縁風） -->
+  <header class="pt-6 px-3 sm:px-6 max-w-5xl mx-auto">
+    <div class="mc-wood-panel mc-item-frame p-4 sm:p-6 text-center">
+      <div class="inline-block px-3 py-1 mb-2 bg-black/50 border-2 border-[#FFFF55] text-[#FFFF55] text-xs sm:text-sm mc-shadow-sm">
+        Minecraft 統合版 (Bedrock) 完全対応・初心者向けガイド
+      </div>
+      <h1 class="text-2xl sm:text-4xl font-bold text-white mc-shadow tracking-wider leading-snug">
+        ⚒️ エンチャント金床合成 支援ツール
+      </h1>
+      <p class="mt-2 text-sm sm:text-base text-[#55FFFF] mc-shadow-sm">
+        「コストが高すぎます (Too Expensive)」を防いで最強装備を作ろう！
+      </p>
+    </div>
+  </header>
+
+  <!-- メイン2大切り替えボタン（無駄なボタンを排除し2つのみ配置） -->
+  <nav class="max-w-5xl mx-auto px-3 sm:px-6 mt-6">
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <button
+        id="tab-btn-books"
+        onclick="switchTab('books')"
+        class="mc-btn-grass active-tab py-4 px-5 text-left sm:text-center rounded"
+      >
+        <div class="text-xs sm:text-sm text-[#FFFF55] mc-shadow-sm">STEP 1 〜 STEP 2</div>
+        <div class="text-lg sm:text-2xl font-bold text-white mc-shadow mt-0.5">
+          📖 ① 効率の良い本の作り方
+        </div>
+        <div class="text-xs text-gray-100 mc-shadow-sm mt-1">
+          司書での準備 ＆ ペア合成の基本ルール
+        </div>
+      </button>
+
+      <button
+        id="tab-btn-gear"
+        onclick="switchTab('gear')"
+        class="mc-btn-cobble py-4 px-5 text-left sm:text-center rounded"
+      >
+        <div class="text-xs sm:text-sm text-[#55FFFF] mc-shadow-sm">STEP 3 ＆ 全装備データ</div>
+        <div class="text-lg sm:text-2xl font-bold text-white mc-shadow mt-0.5">
+          ⚔️ ② 装備への付け方・一覧
+        </div>
+        <div class="text-xs text-gray-200 mc-shadow-sm mt-1">
+          装備別チェック・競合ルール・合成手順図
+        </div>
+      </button>
+    </div>
+  </nav>
+
+  <!-- メインコンテンツ領域 -->
+  <main class="max-w-5xl mx-auto px-3 sm:px-6 mt-6">
+
+    <!-- ========================================================= -->
+    <!-- タブ①：効率の良い本の作り方（最重要ルール解説） -->
+    <!-- ========================================================= -->
+    <section id="view-books" class="space-y-6">
+
+      <!-- 最重要ルール①：最初の準備 -->
+      <div class="mc-wood-panel mc-item-frame p-4 sm:p-6">
+        <div class="flex items-center gap-3 border-b-4 border-[#3e2410] pb-3 mb-4">
+          <span class="text-3xl">👨‍🌾</span>
+          <div>
+            <span class="text-xs bg-[#55FF55] text-black font-bold px-2 py-0.5">最重要ルール①</span>
+            <h2 class="text-xl sm:text-2xl font-bold text-[#FFFF55] mc-shadow mt-1">
+              まずは司書から「耐久力III」「修繕I」の本を用意しよう！
+            </h2>
+          </div>
+        </div>
+
+        <div class="mc-frame-inner p-4 space-y-4 text-sm sm:text-base leading-relaxed">
+          <p class="text-white mc-shadow-sm">
+            どの武器・防具・道具を作る場合でも、基本となるのは<span class="text-[#55FFFF] font-bold">「耐久力III」</span>と<span class="text-[#55FF55] font-bold">「修繕I」</span>の2冊です。まずは村人の<span class="text-[#FFFF55] font-bold">司書（書見台）</span>との交易で、この2冊をいつでも買える状態にしましょう。
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="enchanted-glint p-3 rounded flex items-start gap-3">
+              <div class="text-3xl">📘</div>
+              <div>
+                <div class="text-[#55FFFF] font-bold text-lg mc-shadow-sm">耐久力 III (Unbreaking III)</div>
+                <p class="text-xs sm:text-sm text-gray-200 mt-1">
+                  装備の耐久値が減りにくくなります（約4倍長持ち）。<br>
+                  <span class="text-[#FFFF55]">※司書から直接「耐久力III」を買うと合成回数を節約できます！</span>
+                </p>
+              </div>
+            </div>
+
+            <div class="enchanted-glint p-3 rounded flex items-start gap-3">
+              <div class="text-3xl">📗</div>
+              <div>
+                <div class="text-[#55FF55] font-bold text-lg mc-shadow-sm">修繕 I (Mending I)</div>
+                <p class="text-xs sm:text-sm text-gray-200 mt-1">
+                  経験値を拾うだけで装備の耐久値が自動回復します。<br>
+                  <span class="text-[#FF5555]">※弓の「無限I」とだけは同時に付けられません。</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 最重要ルール②：ペア合成の鉄則 -->
+      <div class="mc-cobble-panel mc-item-frame p-4 sm:p-6">
+        <div class="flex items-center gap-3 border-b-4 border-[#222] pb-3 mb-4">
+          <span class="text-3xl">⚒️</span>
+          <div>
+            <span class="text-xs bg-[#FF5555] text-white font-bold px-2 py-0.5">最重要ルール②</span>
+            <h2 class="text-xl sm:text-2xl font-bold text-[#55FFFF] mc-shadow mt-1">
+              【本同士を先にペア合成】→【最後に新品装備に1回だけ適用】
+            </h2>
+          </div>
+        </div>
+
+        <div class="mc-frame-inner p-4 space-y-5">
+          <!-- なぜそうするのか -->
+          <div class="bg-[#4a1c1c] border-2 border-[#FF5555] p-3 rounded">
+            <div class="text-[#FF5555] font-bold text-base sm:text-lg mc-shadow-sm">
+              ⚠️ 絶対NG：装備を何度も金床に通すこと！
+            </div>
+            <p class="text-xs sm:text-sm text-white mt-1 leading-relaxed">
+              金床で合成するたびに「作業回数ペナルティ」が増え、必要経験値レベルが2倍・4倍・8倍…と跳ね上がります。装備に1冊ずつ本を足していくと、途中で<span class="text-[#FFFF55] font-bold">「コストが高すぎます (Too Expensive!)」</span>と表示され、二度と合成できなくなります。
+            </p>
+          </div>
+
+          <!-- 図解：トーナメント方式（ペア合成） -->
+          <div class="space-y-3">
+            <h3 class="text-lg font-bold text-[#55FF55] mc-shadow-sm">
+              ✅ 正しい合成の手順（トーナメント方式）
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
+              <div class="bg-[#243326] border-2 border-[#55FF55] p-3 rounded">
+                <div class="text-xs text-[#FFFF55] font-bold">手順 1</div>
+                <div class="text-base font-bold text-white mt-1">本を2冊ずつペアで合体</div>
+                <div class="mt-2 text-xs text-gray-200 bg-black/40 p-2 rounded">
+                  [本A ＋ 本B] → <span class="text-[#55FFFF]">合体本AB</span><br>
+                  [本C ＋ 本D] → <span class="text-[#55FFFF]">合体本CD</span>
+                </div>
+              </div>
+
+              <div class="bg-[#243326] border-2 border-[#55FF55] p-3 rounded">
+                <div class="text-xs text-[#FFFF55] font-bold">手順 2</div>
+                <div class="text-base font-bold text-white mt-1">合体本同士を1冊にまとめる</div>
+                <div class="mt-2 text-xs text-gray-200 bg-black/40 p-2 rounded">
+                  [<span class="text-[#55FFFF]">合体本AB</span> ＋ <span class="text-[#55FFFF]">合体本CD</span>]<br>
+                  → <span class="text-[#FFFF55] font-bold">最強の1冊 (ABCD)</span>
+                </div>
+              </div>
+
+              <div class="bg-[#243326] border-2 border-[#55FF55] p-3 rounded">
+                <div class="text-xs text-[#FFFF55] font-bold">手順 3（仕上げ）</div>
+                <div class="text-base font-bold text-white mt-1">新品装備に1回だけ適用！</div>
+                <div class="mt-2 text-xs text-gray-200 bg-black/40 p-2 rounded">
+                  [新品の装備] ＋ [<span class="text-[#FFFF55]">最強の1冊</span>]<br>
+                  → <span class="text-[#55FF55] font-bold">✨ 最強装備の完成！</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ワンポイントアドバイス -->
+          <div class="bg-black/40 border-2 border-[#FFFF55] p-3 rounded text-xs sm:text-sm space-y-1.5">
+            <div class="text-[#FFFF55] font-bold">💡 初心者が失敗しない3つのコツ</div>
+            <ul class="list-disc list-inside text-gray-100 space-y-1">
+              <li>エンチャントテーブルで付けた装備に無理やり足すより、<span class="text-[#55FFFF]">新品のダイヤ・ネザライト装備</span>に最強本を1回付けるのが一番確実です。</li>
+              <li>同じレベルの低い本（例：耐久力II＋耐久力II＝耐久力III）を何度も合成すると回数がかさむため、<span class="text-[#55FF55]">最初から最大レベルの本</span>を司書から用意しましょう。</li>
+              <li>左側に「エンチャント数が多い本」、右側に「エンチャント数が少ない本」を置くと経験値コストが安くなります。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- 全装備共通：絶対に覚えておきたい競合早見表 -->
+      <div class="mc-wood-panel mc-item-frame p-4 sm:p-6">
+        <h2 class="text-xl sm:text-2xl font-bold text-[#FFFF55] mc-shadow border-b-4 border-[#3e2410] pb-2 mb-4">
+          🚫 同時に付けられない「競合エンチャント」一覧（統合版）
+        </h2>
+        <div class="mc-frame-inner p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-sm">
+          <div class="bg-black/40 border-l-4 border-[#FF5555] p-3">
+            <div class="text-[#FFFF55] font-bold">⚔️ 剣・斧（攻撃系）</div>
+            <div class="text-white mt-1">ダメージ増加V ↔ アンデット特攻V ↔ 虫特攻V ↔ 防具貫通IV</div>
+          </div>
+          <div class="bg-black/40 border-l-4 border-[#FF5555] p-3">
+            <div class="text-[#FFFF55] font-bold">🛡️ 防具（保護・耐性系）</div>
+            <div class="text-white mt-1">保護IV ↔ 火炎保護IV ↔ 飛び道具保護IV ↔ 爆風保護IV</div>
+          </div>
+          <div class="bg-black/40 border-l-4 border-[#FF5555] p-3">
+            <div class="text-[#FFFF55] font-bold">⛏️ 道具（採掘系）</div>
+            <div class="text-white mt-1">幸運III ↔ シルクタッチI</div>
+          </div>
+          <div class="bg-black/40 border-l-4 border-[#FF5555] p-3">
+            <div class="text-[#FFFF55] font-bold">🏹 弓</div>
+            <div class="text-white mt-1">無限I ↔ 修繕I</div>
+          </div>
+          <div class="bg-black/40 border-l-4 border-[#FF5555] p-3">
+            <div class="text-[#FFFF55] font-bold">🔱 トライデント</div>
+            <div class="text-white mt-1">激流III ↔ 召雷III（I） ↔ 貫通III（忠誠IIIとも競合）</div>
+          </div>
+          <div class="bg-black/40 border-l-4 border-[#FF5555] p-3">
+            <div class="text-[#FFFF55] font-bold">🎯 クロスボウ</div>
+            <div class="text-white mt-1">貫通IV ↔ マルチショットI</div>
+          </div>
+          <div class="bg-black/40 border-l-4 border-[#FF5555] p-3 md:col-span-2">
+            <div class="text-[#FFFF55] font-bold">👢 ブーツ</div>
+            <div class="text-white mt-1">ソウルスピードIII ↔ 氷渡りII</div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- タブ②：装備への付け方・一覧（装備選択＆自動ペア合成シミュレータ） -->
+    <!-- ========================================================= -->
+    <section id="view-gear" class="hidden space-y-6">
+
+      <!-- ステップ1：装備カテゴリ＆アイテム選択 -->
+      <div class="mc-wood-panel mc-item-frame p-4 sm:p-6">
+        <h2 class="text-lg sm:text-xl font-bold text-[#FFFF55] mc-shadow mb-3">
+          1️⃣ 作りたい装備を選んでください
+        </h2>
+
+        <!-- カテゴリ一覧 -->
+        <div id="equipment-selector" class="space-y-4"></div>
+      </div>
+
+      <!-- ステップ2：選択した装備の「付けられる」「競合」「付けられない」＆チェック機構 -->
+      <div id="gear-detail-panel" class="mc-cobble-panel mc-item-frame p-4 sm:p-6 space-y-6">
+        <!-- JSで動的描画 -->
+      </div>
+
+      <!-- ステップ3：選んだ本の「ペア合成手順」自動生成 -->
+      <div id="pairing-plan-panel" class="mc-wood-panel mc-item-frame p-4 sm:p-6">
+        <!-- JSで動的描画 -->
+      </div>
+
+    </section>
+
+  </main>
+
+  <script>
+    /**
+     * Minecraft 統合版（Bedrock）エンチャントデータ定義
+     * 初心者にも分かりやすい名称・統合版表記・競合グループを網羅
+     */
+    const EQUIPMENT_DATA = [
+      // ================= 武器 =================
+      {
+        id: 'sword',
+        category: '武器',
+        name: '剣 (Sword)',
+        icon: '⚔️',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'sharpness', name: 'ダメージ増加 V', color: 'yellow', conflictGroup: 'sword_dmg', defaultChecked: true, note: '全モブに有効（汎用）' },
+          { id: 'smite', name: 'アンデット特攻 V', color: 'white', conflictGroup: 'sword_dmg', defaultChecked: false, note: 'ゾンビ・スケルトン・ウィザー特化' },
+          { id: 'bane', name: '虫特攻 V', color: 'white', conflictGroup: 'sword_dmg', defaultChecked: false, note: 'クモ・シルバーフィッシュ特化' },
+          { id: 'breach_sword', name: '防具貫通 IV', color: 'white', conflictGroup: 'sword_dmg', defaultChecked: false, note: '防具の防御力を貫通（※メイス専用だが比較用競合枠）' },
+          { id: 'looting', name: 'ドロップ増加 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: 'アイテムドロップ量アップ' },
+          { id: 'fire_aspect', name: '火属性 II', color: 'yellow', conflictGroup: null, defaultChecked: true, note: '敵を燃やし焼き肉を入手' },
+          { id: 'knockback', name: 'ノックバック II', color: 'white', conflictGroup: null, defaultChecked: false, note: '敵を大きく吹き飛ばす（好みで選択）' }
+        ],
+        conflictsText: [
+          'ダメージ増加V ↔ アンデット特攻V ↔ 虫特攻V ↔ 防具貫通IV（どれか1つのみ）'
+        ],
+        incompatibleText: [
+          '範囲ダメージ増加（Java版限定のため統合版には存在しません）',
+          '幸運III / シルクタッチI / 効率強化V（道具専用）',
+          'パワーV / 無限I（弓専用）'
+        ]
+      },
+      {
+        id: 'axe',
+        category: '武器',
+        name: '斧 (Axe)',
+        icon: '🪓',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'efficiency', name: '効率強化 V', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '木材の伐採速度アップ' },
+          { id: 'sharpness', name: 'ダメージ増加 V', color: 'yellow', conflictGroup: 'axe_dmg', defaultChecked: true, note: '攻撃力アップ' },
+          { id: 'smite', name: 'アンデット特攻 V', color: 'white', conflictGroup: 'axe_dmg', defaultChecked: false, note: 'アンデット系に大ダメージ' },
+          { id: 'bane', name: '虫特攻 V', color: 'white', conflictGroup: 'axe_dmg', defaultChecked: false, note: '虫系モブに大ダメージ' },
+          { id: 'breach_axe', name: '防具貫通 IV', color: 'white', conflictGroup: 'axe_dmg', defaultChecked: false, note: '攻撃系競合グループ' },
+          { id: 'fortune', name: '幸運 III', color: 'aqua', conflictGroup: 'axe_harvest', defaultChecked: false, note: '葉から苗木・リンゴ率アップ' },
+          { id: 'silk_touch', name: 'シルクタッチ I', color: 'yellow', conflictGroup: 'axe_harvest', defaultChecked: true, note: '本棚・スイカ・巨大キノコをそのまま回収' }
+        ],
+        conflictsText: [
+          'ダメージ増加V ↔ アンデット特攻V ↔ 虫特攻V ↔ 防具貫通IV',
+          '幸運III ↔ シルクタッチI'
+        ],
+        incompatibleText: [
+          'ドロップ増加III / 火属性II / ノックバックII（剣専用のため斧には付きません）'
+        ]
+      },
+      {
+        id: 'bow',
+        category: '武器',
+        name: '弓 (Bow)',
+        icon: '🏹',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'power', name: '射撃ダメージ増加 V (パワー)', color: 'yellow', conflictGroup: null, defaultChecked: true, note: '矢の威力大幅アップ' },
+          { id: 'flame', name: 'フレイム I', color: 'yellow', conflictGroup: null, defaultChecked: true, note: '火の矢を放つ' },
+          { id: 'punch', name: 'パンチ II', color: 'white', conflictGroup: null, defaultChecked: false, note: '矢のノックバック増加' },
+          { id: 'infinity', name: '無限 I', color: 'aqua', conflictGroup: 'bow_mend_inf', defaultChecked: true, note: '矢が1本あれば撃ち放題（※修繕と競合）' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: 'bow_mend_inf', defaultChecked: false, note: '経験値で回復（※無限と競合）' }
+        ],
+        conflictsText: [
+          '無限I ↔ 修繕I（どちらか1つのみ！初心者には矢が尽きない「無限I」も人気）'
+        ],
+        incompatibleText: [
+          'ダメージ増加V / ドロップ増加III（剣専用）',
+          '貫通IV / マルチショットI / 高速装填III（クロスボウ専用）'
+        ]
+      },
+      {
+        id: 'crossbow',
+        category: '武器',
+        name: 'クロスボウ (Crossbow)',
+        icon: '🎯',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'quick_charge', name: '高速装填 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: 'リロード時間を大幅短縮' },
+          { id: 'multishot', name: 'マルチショット I (拡散)', color: 'yellow', conflictGroup: 'cbow_shot', defaultChecked: true, note: '1発分の消費で3方向に発射' },
+          { id: 'piercing', name: '貫通 IV', color: 'white', conflictGroup: 'cbow_shot', defaultChecked: false, note: '敵や盾を貫通し矢を回収可能' }
+        ],
+        conflictsText: [
+          '貫通IV ↔ マルチショットI（どちらか1つのみ）'
+        ],
+        incompatibleText: [
+          '無限I / 射撃ダメージ増加V / フレイムI / パンチII（弓専用のためクロスボウには付きません）'
+        ]
+      },
+      {
+        id: 'trident',
+        category: '武器',
+        name: 'トライデント (Trident)',
+        icon: '🔱',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'impaling', name: '水生特攻 V', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '水中の敵や雨天時の敵に大ダメージ' },
+          { id: 'loyalty', name: '忠誠 III', color: 'yellow', conflictGroup: 'trident_move', defaultChecked: true, note: '投げた後に手元へ戻ってくる' },
+          { id: 'channeling', name: '召雷 I (III)', color: 'yellow', conflictGroup: 'trident_move', defaultChecked: true, note: '雷雨時に敵へ雷を落とす（激流と競合）' },
+          { id: 'riptide', name: '激流 III', color: 'aqua', conflictGroup: 'trident_move', defaultChecked: false, note: '水中・雨天時に高速移動（忠誠・召雷と競合）' },
+          { id: 'piercing_tri', name: '貫通 III', color: 'white', conflictGroup: 'trident_move', defaultChecked: false, note: '激流・召雷と競合する特殊枠' }
+        ],
+        conflictsText: [
+          '激流III ↔ 召雷III（I） ↔ 貫通III（また激流IIIは「忠誠III」とも同時に付けられません）'
+        ],
+        incompatibleText: [
+          'ダメージ増加V / ドロップ増加III / 火属性II（剣専用）',
+          '無限I（トライデントは「忠誠III」で手元に戻します）'
+        ]
+      },
+      {
+        id: 'mace',
+        category: '武器',
+        name: 'メイス (Mace)',
+        icon: '🔨',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'density', name: '重撃 V', color: 'yellow', conflictGroup: 'mace_dmg', defaultChecked: true, note: '落下距離に応じたダメージ増加' },
+          { id: 'breach', name: '防具貫通 IV', color: 'aqua', conflictGroup: 'mace_dmg', defaultChecked: false, note: '敵の防具効果を軽減' },
+          { id: 'smite_mace', name: 'アンデット特攻 V', color: 'white', conflictGroup: 'mace_dmg', defaultChecked: false, note: 'アンデット特化' },
+          { id: 'bane_mace', name: '虫特攻 V', color: 'white', conflictGroup: 'mace_dmg', defaultChecked: false, note: '虫モブ特化' },
+          { id: 'wind_burst', name: 'ウィンドバースト III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: 'スマッシュ攻撃成功時に上空へ再跳躍' },
+          { id: 'fire_aspect_mace', name: '火属性 II', color: 'white', conflictGroup: null, defaultChecked: false, note: '敵を炎上させる' }
+        ],
+        conflictsText: [
+          '重撃V ↔ 防具貫通IV ↔ アンデット特攻V ↔ 虫特攻V'
+        ],
+        incompatibleText: [
+          'ダメージ増加V（メイスにはダメージ増加は付きません）',
+          'ドロップ増加III / ノックバックII（剣専用）'
+        ]
+      },
+
+      // ================= 防具 =================
+      {
+        id: 'helmet',
+        category: '防具',
+        name: 'ヘルメット (Helmet)',
+        icon: '🪖',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'prot', name: '保護 IV (ダメージ軽減)', color: 'yellow', conflictGroup: 'armor_prot', defaultChecked: true, note: '全ダメージ軽減（最優先）' },
+          { id: 'fire_prot', name: '火炎保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: '炎・溶岩ダメージ軽減' },
+          { id: 'proj_prot', name: '飛び道具保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: '矢・トライデント軽減' },
+          { id: 'blast_prot', name: '爆風保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: 'クリーパー・TNT軽減' },
+          { id: 'respiration', name: '水中呼吸 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '水中で息が長く続く' },
+          { id: 'aqua_affinity', name: '水中採掘 I', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '水中のブロック破壊速度が地上と同じに' },
+          { id: 'thorns', name: '棘の鎧 III', color: 'white', conflictGroup: null, defaultChecked: false, note: '反撃ダメージ（※耐久消費が早くなるので注意）' }
+        ],
+        conflictsText: [
+          '保護IV ↔ 火炎保護IV ↔ 飛び道具保護IV ↔ 爆風保護IV（どれか1つのみ）'
+        ],
+        incompatibleText: [
+          '水中歩行III / 落下耐性IV / ソウルスピードIII（ブーツ専用）',
+          'スニーク速度上昇III（レギンス専用）'
+        ]
+      },
+      {
+        id: 'chestplate',
+        category: '防具',
+        name: 'チェストプレート (Chestplate)',
+        icon: '🦺',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'prot', name: '保護 IV (ダメージ軽減)', color: 'yellow', conflictGroup: 'armor_prot', defaultChecked: true, note: '全ダメージ軽減（最優先）' },
+          { id: 'fire_prot', name: '火炎保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: '炎・溶岩ダメージ軽減' },
+          { id: 'proj_prot', name: '飛び道具保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: '矢・トライデント軽減' },
+          { id: 'blast_prot', name: '爆風保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: 'クリーパー・TNT軽減' },
+          { id: 'thorns', name: '棘の鎧 III', color: 'white', conflictGroup: null, defaultChecked: false, note: '攻撃してきた敵にダメージ（耐久消費増）' }
+        ],
+        conflictsText: [
+          '保護IV ↔ 火炎保護IV ↔ 飛び道具保護IV ↔ 爆風保護IV（どれか1つのみ）'
+        ],
+        incompatibleText: [
+          '水中呼吸III / 落下耐性IV / スニーク速度上昇III（他部位専用）'
+        ]
+      },
+      {
+        id: 'leggings',
+        category: '防具',
+        name: 'レギンス (Leggings)',
+        icon: '👖',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'prot', name: '保護 IV (ダメージ軽減)', color: 'yellow', conflictGroup: 'armor_prot', defaultChecked: true, note: '全ダメージ軽減（最優先）' },
+          { id: 'fire_prot', name: '火炎保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: '炎・溶岩ダメージ軽減' },
+          { id: 'proj_prot', name: '飛び道具保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: '矢・トライデント軽減' },
+          { id: 'blast_prot', name: '爆風保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: 'クリーパー・TNT軽減' },
+          { id: 'swift_sneak', name: 'スニーク速度上昇 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: 'しゃがみ移動が高速化（古代都市限定本）' },
+          { id: 'thorns', name: '棘の鎧 III', color: 'white', conflictGroup: null, defaultChecked: false, note: '反撃ダメージ（耐久消費増）' }
+        ],
+        conflictsText: [
+          '保護IV ↔ 火炎保護IV ↔ 飛び道具保護IV ↔ 爆風保護IV（どれか1つのみ）'
+        ],
+        incompatibleText: [
+          '水中歩行III / 氷渡りII / 落下耐性IV（ブーツ専用）'
+        ]
+      },
+      {
+        id: 'boots',
+        category: '防具',
+        name: 'ブーツ (Boots)',
+        icon: '👢',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'prot', name: '保護 IV (ダメージ軽減)', color: 'yellow', conflictGroup: 'armor_prot', defaultChecked: true, note: '全ダメージ軽減（最優先）' },
+          { id: 'fire_prot', name: '火炎保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: '炎・溶岩ダメージ軽減' },
+          { id: 'proj_prot', name: '飛び道具保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: '矢・トライデント軽減' },
+          { id: 'blast_prot', name: '爆風保護 IV', color: 'white', conflictGroup: 'armor_prot', defaultChecked: false, note: 'クリーパー・TNT軽減' },
+          { id: 'feather_falling', name: '落下耐性 IV', color: 'yellow', conflictGroup: null, defaultChecked: true, note: '落下ダメージを大幅軽減（必須級）' },
+          { id: 'depth_strider', name: '水中歩行 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '水中を地上並みに速く泳げる' },
+          { id: 'soul_speed', name: 'ソウルスピード III', color: 'aqua', conflictGroup: 'boots_ice_soul', defaultChecked: true, note: 'ソウルサンドの上を高速移動' },
+          { id: 'frost_walker', name: '氷渡り II', color: 'white', conflictGroup: 'boots_ice_soul', defaultChecked: false, note: '水面を凍らせて歩く（※ソウルスピードと競合）' },
+          { id: 'thorns', name: '棘の鎧 III', color: 'white', conflictGroup: null, defaultChecked: false, note: '反撃ダメージ' }
+        ],
+        conflictsText: [
+          '保護IV ↔ 火炎保護IV ↔ 飛び道具保護IV ↔ 爆風保護IV',
+          'ソウルスピードIII ↔ 氷渡りII（どちらか1つのみ）'
+        ],
+        incompatibleText: [
+          '水中呼吸III / 水中採掘I（ヘルメット専用）',
+          'スニーク速度上昇III（レギンス専用）'
+        ]
+      },
+
+      // ================= 道具 =================
+      {
+        id: 'pickaxe',
+        category: '道具',
+        name: 'ツルハシ (Pickaxe)',
+        icon: '⛏️',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'efficiency', name: '効率強化 V', color: 'yellow', conflictGroup: null, defaultChecked: true, note: '採掘スピードが爆速になる' },
+          { id: 'fortune', name: '幸運 III', color: 'aqua', conflictGroup: 'tool_harvest', defaultChecked: true, note: 'ダイヤ・石炭等のドロップ数増加（採掘用）' },
+          { id: 'silk_touch', name: 'シルクタッチ I', color: 'yellow', conflictGroup: 'tool_harvest', defaultChecked: false, note: '石や鉱石をそのまま回収（建築・整地用）' }
+        ],
+        conflictsText: [
+          '幸運III ↔ シルクタッチI（どちらか1つのみ！用途別に2本作るのがおすすめ）'
+        ],
+        incompatibleText: [
+          'ドロップ増加III（剣専用のため鉱石には効果がなく付きません）',
+          'ダメージ増加V（ツルハシには付きません）'
+        ]
+      },
+      {
+        id: 'shovel',
+        category: '道具',
+        name: 'シャベル (Shovel)',
+        icon: '🥄',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'efficiency', name: '効率強化 V', color: 'yellow', conflictGroup: null, defaultChecked: true, note: '土・砂・砂利を一瞬で掘削' },
+          { id: 'silk_touch', name: 'シルクタッチ I', color: 'yellow', conflictGroup: 'tool_harvest', defaultChecked: true, note: '草ブロック・菌糸をそのまま回収' },
+          { id: 'fortune', name: '幸運 III', color: 'aqua', conflictGroup: 'tool_harvest', defaultChecked: false, note: '砂利から火打石が100%ドロップ' }
+        ],
+        conflictsText: [
+          '幸運III ↔ シルクタッチI（どちらか1つのみ）'
+        ],
+        incompatibleText: [
+          'ダメージ増加V / ドロップ増加III（武器専用）'
+        ]
+      },
+      {
+        id: 'hoe',
+        category: '道具',
+        name: 'クワ (Hoe)',
+        icon: '🌾',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'efficiency', name: '効率強化 V', color: 'yellow', conflictGroup: null, defaultChecked: true, note: 'スカルク・葉・干草ブロックを高速破壊' },
+          { id: 'fortune', name: '幸運 III', color: 'aqua', conflictGroup: 'tool_harvest', defaultChecked: true, note: '作物の種・ジャガイモ・リンゴ等の収穫増' },
+          { id: 'silk_touch', name: 'シルクタッチ I', color: 'yellow', conflictGroup: 'tool_harvest', defaultChecked: false, note: '葉ブロックやスカルクをそのまま回収' }
+        ],
+        conflictsText: [
+          '幸運III ↔ シルクタッチI（どちらか1つのみ）'
+        ],
+        incompatibleText: [
+          'ダメージ増加V / ドロップ増加III（武器専用）'
+        ]
+      },
+      {
+        id: 'fishing_rod',
+        category: '道具',
+        name: '釣り竿 (Fishing Rod)',
+        icon: '🎣',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '釣りの経験値で無限に使える！' },
+          { id: 'luck_of_sea', name: '宝釣り III', color: 'yellow', conflictGroup: null, defaultChecked: true, note: 'エンチャント本・名札・サドルが釣れやすくなる' },
+          { id: 'lure', name: '入れ食い III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '魚がかかるまでの待ち時間を短縮' }
+        ],
+        conflictsText: [
+          '競合エンチャントはありません（4種類すべて同時に付けられます！）'
+        ],
+        incompatibleText: [
+          '幸運III / シルクタッチI / ドロップ増加III（釣り竿には「宝釣りIII」を使います）'
+        ]
+      },
+
+      // ================= その他 =================
+      {
+        id: 'elytra',
+        category: 'その他',
+        name: 'エリトラ (Elytra)',
+        icon: '🪽',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '飛行時間を約4倍に延長（必須）' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '経験値で自動修復（必須）' }
+        ],
+        conflictsText: [
+          '競合エンチャントはありません（耐久力III＋修繕Iの2冊を合成して適用）'
+        ],
+        incompatibleText: [
+          '保護IV / 落下耐性IV / 棘の鎧III（防具用エンチャントは一切付きません）'
+        ]
+      },
+      {
+        id: 'shield',
+        category: 'その他',
+        name: '盾 (Shield)',
+        icon: '🛡️',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: 'ガード時の耐久減少を抑える' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '経験値で自動修復' }
+        ],
+        conflictsText: [
+          '競合エンチャントはありません（耐久力III＋修繕Iの2冊のみ）'
+        ],
+        incompatibleText: [
+          '保護IV / 棘の鎧III / ノックバックII（盾には付きません）'
+        ]
+      },
+      {
+        id: 'flint_and_steel',
+        category: 'その他',
+        name: '火打石と打ち金 / ハサミ / ブラシ',
+        icon: '✂️',
+        applicable: [
+          { id: 'unbreaking', name: '耐久力 III', color: 'aqua', conflictGroup: null, defaultChecked: true, note: '司書から用意' },
+          { id: 'mending', name: '修繕 I', color: 'green', conflictGroup: null, defaultChecked: true, note: '司書から用意' }
+        ],
+        conflictsText: [
+          '競合エンチャントはありません（耐久力III＋修繕Iの2冊が基本）'
+        ],
+        incompatibleText: [
+          '幸運III / シルクタッチI（ハサミ自体に羊毛・クモの巣回収能力があるため不要）',
+          '効率強化V（統合版では金床での本適用対象外）'
+        ]
+      }
+    ];
+
+    // 現在選択中の装備IDとチェック状態
+    let currentEquipId = 'sword';
+    let checkedEnchIds = new Set();
+
+    // エンチャント文字色をマイクラカラーへ変換
+    function getMcColorClass(color) {
+      switch (color) {
+        case 'yellow': return 'text-[#FFFF55]';
+        case 'aqua': return 'text-[#55FFFF]';
+        case 'green': return 'text-[#55FF55]';
+        default: return 'text-white';
+      }
+    }
+
+    // タブ切り替え（① 効率の良い本の作り方 / ② 装備への付け方・一覧）
+    function switchTab(tab) {
+      const viewBooks = document.getElementById('view-books');
+      const viewGear = document.getElementById('view-gear');
+      const btnBooks = document.getElementById('tab-btn-books');
+      const btnGear = document.getElementById('tab-btn-gear');
+
+      if (tab === 'books') {
+        viewBooks.classList.remove('hidden');
+        viewGear.classList.add('hidden');
+        btnBooks.classList.add('active-tab');
+        btnGear.classList.remove('active-tab');
+      } else {
+        viewBooks.classList.add('hidden');
+        viewGear.classList.remove('hidden');
+        btnBooks.classList.remove('active-tab');
+        btnGear.classList.add('active-tab');
+      }
+    }
+
+    // 装備選択リスト（カテゴリ別）を描画
+    function renderEquipmentSelector() {
+      const container = document.getElementById('equipment-selector');
+      const categories = ['武器', '防具', '道具', 'その他'];
+
+      container.innerHTML = categories.map(cat => {
+        const items = EQUIPMENT_DATA.filter(item => item.category === cat);
+        return `
+          <div class="mc-frame-inner p-3 rounded">
+            <div class="text-xs sm:text-sm font-bold text-[#55FFFF] mb-2 mc-shadow-sm">
+              【${cat}】
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              ${items.map(item => {
+                const isSelected = item.id === currentEquipId;
+                return `
+                  <button
+                    onclick="selectEquipment('${item.id}')"
+                    class="mc-slot ${isSelected ? 'selected' : ''} p-2.5 text-left flex items-center gap-2 rounded"
+                  >
+                    <span class="text-xl sm:text-2xl">${item.icon}</span>
+                    <span class="text-xs sm:text-sm font-bold text-white mc-shadow-sm leading-tight">
+                      ${item.name.split(' ')[0]}
+                    </span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // 装備を選択したときの初期化
+    function selectEquipment(equipId) {
+      currentEquipId = equipId;
+      const equip = EQUIPMENT_DATA.find(e => e.id === equipId);
+      checkedEnchIds = new Set();
+      equip.applicable.forEach(ench => {
+        if (ench.defaultChecked) {
+          checkedEnchIds.add(ench.id);
+        }
+      });
+      renderEquipmentSelector();
+      renderGearDetails();
+      renderPairingPlan();
+    }
+
+    // エンチャントのチェック切り替え（競合は自動ロック）
+    function toggleEnchantment(enchId) {
+      const equip = EQUIPMENT_DATA.find(e => e.id === currentEquipId);
+      const target = equip.applicable.find(e => e.id === enchId);
+      if (!target) return;
+
+      // すでにチェック済みの場合は外す
+      if (checkedEnchIds.has(enchId)) {
+        checkedEnchIds.delete(enchId);
+      } else {
+        // 同じ競合グループにチェック済みがあれば無効（クリック不可）
+        if (target.conflictGroup) {
+          const hasConflict = equip.applicable.some(
+            e => e.id !== enchId && e.conflictGroup === target.conflictGroup && checkedEnchIds.has(e.id)
+          );
+          if (hasConflict) return;
+        }
+        checkedEnchIds.add(enchId);
+      }
+
+      renderGearDetails();
+      renderPairingPlan();
+    }
+
+    // 装備の詳細（付けられる・競合・付けられない）を描画
+    function renderGearDetails() {
+      const container = document.getElementById('gear-detail-panel');
+      const equip = EQUIPMENT_DATA.find(e => e.id === currentEquipId);
+
+      // 現在アクティブな競合グループを収集
+      const activeConflictGroups = new Map();
+      equip.applicable.forEach(e => {
+        if (checkedEnchIds.has(e.id) && e.conflictGroup) {
+          activeConflictGroups.set(e.conflictGroup, e.name);
+        }
+      });
+
+      const enchRowsHtml = equip.applicable.map(ench => {
+        const isChecked = checkedEnchIds.has(ench.id);
+        const conflictWith = (!isChecked && ench.conflictGroup && activeConflictGroups.has(ench.conflictGroup))
+          ? activeConflictGroups.get(ench.conflictGroup)
+          : null;
+
+        const rowClass = isChecked
+          ? 'is-checked cursor-pointer'
+          : conflictWith
+            ? 'is-conflicted'
+            : 'cursor-pointer';
+
+        return `
+          <div
+            onclick="toggleEnchantment('${ench.id}')"
+            class="ench-row ${rowClass} p-3 rounded flex items-center justify-between gap-3"
+          >
+            <div class="flex items-center gap-3">
+              <div class="mc-checkbox">
+                ${isChecked ? '<span class="text-[#55FF55] font-bold text-lg">✔</span>' : ''}
+              </div>
+              <div>
+                <div class="font-bold text-sm sm:text-base ${getMcColorClass(ench.color)} mc-shadow-sm">
+                  ${ench.name}
+                </div>
+                <div class="text-xs text-gray-300 mt-0.5">${ench.note}</div>
+              </div>
+            </div>
+
+            <div class="text-right shrink-0">
+              ${conflictWith
+                ? `<span class="inline-block bg-[#FF5555] text-white text-xs font-bold px-2 py-1 rounded">
+                     ⚠️「${conflictWith}」と競合中
+                   </span>`
+                : isChecked
+                  ? `<span class="inline-block bg-[#285e2f] border border-[#55FF55] text-[#55FF55] text-xs font-bold px-2 py-1 rounded">
+                       選択中
+                     </span>`
+                  : `<span class="text-xs text-gray-400">タップで選択</span>`
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b-4 border-[#222] pb-3">
+          <div class="flex items-center gap-3">
+            <span class="text-3xl sm:text-4xl">${equip.icon}</span>
+            <div>
+              <span class="text-xs bg-[#55FFFF] text-black font-bold px-2 py-0.5">${equip.category}</span>
+              <h2 class="text-xl sm:text-2xl font-bold text-white mc-shadow mt-1">${equip.name}</h2>
+            </div>
+          </div>
+          <div class="text-xs sm:text-sm text-[#FFFF55] bg-black/50 px-3 py-1.5 rounded border border-[#FFFF55]">
+            付けたい本にチェックを入れてください（競合は自動ロック）
+          </div>
+        </div>
+
+        <!-- ① 付けられるエンチャント（チェック式） -->
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-[#55FF55] mc-shadow-sm mb-2">
+            ✅ 付けられるエンチャント一覧（タップで選択・解除）
+          </h3>
+          <div class="space-y-2">
+            ${enchRowsHtml}
+          </div>
+        </div>
+
+        <!-- ② 同時に付けられない競合エンチャント -->
+        <div class="bg-[#3b1c1c] border-2 border-[#FF5555] p-4 rounded">
+          <h3 class="text-base sm:text-lg font-bold text-[#FF5555] mc-shadow-sm mb-2">
+            ⚡ 同時に付けられない「競合エンチャント」
+          </h3>
+          <ul class="list-disc list-inside text-xs sm:text-sm text-white space-y-1">
+            ${equip.conflictsText.map(t => `<li>${t}</li>`).join('')}
+          </ul>
+        </div>
+
+        <!-- ③ 付けられない主なエンチャント -->
+        <div class="bg-black/50 border-2 border-gray-500 p-4 rounded">
+          <h3 class="text-base sm:text-lg font-bold text-gray-300 mc-shadow-sm mb-2">
+            ❌ この装備には付けられない主なエンチャント
+          </h3>
+          <ul class="list-disc list-inside text-xs sm:text-sm text-gray-300 space-y-1">
+            ${equip.incompatibleText.map(t => `<li>${t}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    // 選んだエンチャント本の「ペア合成トーナメント図」を自動計算して描画
+    function renderPairingPlan() {
+      const container = document.getElementById('pairing-plan-panel');
+      const equip = EQUIPMENT_DATA.find(e => e.id === currentEquipId);
+      const selectedBooks = equip.applicable.filter(e => checkedEnchIds.has(e.id));
+
+      if (selectedBooks.length === 0) {
+        container.innerHTML = `
+          <h2 class="text-lg sm:text-xl font-bold text-[#FFFF55] mc-shadow">
+            3️⃣ 金床でのペア合成手順
+          </h2>
+          <p class="text-sm text-gray-200 mt-2">
+            上のリストから付けたいエンチャントを1つ以上チェックすると、最適な合成手順が表示されます。
+          </p>
+        `;
+        return;
+      }
+
+      // トーナメント方式でペア合成のラウンドを生成
+      let rounds = [];
+      let currentLayer = selectedBooks.map(b => ({
+        label: b.name,
+        bookCount: 1
+      }));
+
+      let stepNum = 1;
+      while (currentLayer.length > 1) {
+        let nextLayer = [];
+        let roundPairs = [];
+
+        for (let i = 0; i < currentLayer.length; i += 2) {
+          if (i + 1 < currentLayer.length) {
+            const left = currentLayer[i];
+            const right = currentLayer[i + 1];
+            const combinedLabel = `${left.label} ＋ ${right.label}`;
+            roundPairs.push({
+              type: 'combine',
+              left: left.label,
+              right: right.label,
+              result: `合体本(${left.bookCount + right.bookCount}種)`
+            });
+            nextLayer.push({
+              label: `合体本[${left.label} / ${right.label}]`,
+              bookCount: left.bookCount + right.bookCount
+            });
+          } else {
+            // 余った1冊はそのまま次のラウンドへ持ち越し
+            roundPairs.push({
+              type: 'carry',
+              left: currentLayer[i].label
+            });
+            nextLayer.push(currentLayer[i]);
+          }
+        }
+
+        rounds.push({ step: stepNum++, pairs: roundPairs });
+        currentLayer = nextLayer;
+      }
+
+      const roundsHtml = rounds.map(r => `
+        <div class="mc-frame-inner p-3 rounded space-y-2">
+          <div class="text-xs sm:text-sm font-bold text-[#55FFFF]">
+            【本同士の合成：第${r.step}段階】
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+            ${r.pairs.map(p => {
+              if (p.type === 'combine') {
+                return `
+                  <div class="bg-[#2c2138] border-2 border-[#b565ff] p-2.5 rounded text-xs sm:text-sm">
+                    <div class="text-white">📘 <span class="text-[#FFFF55]">${p.left}</span></div>
+                    <div class="text-gray-300 my-0.5">＋ 📘 <span class="text-[#55FFFF]">${p.right}</span></div>
+                    <div class="text-[#55FF55] font-bold mt-1">➡ ${p.result} を作成</div>
+                  </div>
+                `;
+              } else {
+                return `
+                  <div class="bg-black/40 border border-gray-500 p-2.5 rounded text-xs sm:text-sm flex items-center">
+                    <span class="text-gray-300">📘 <span class="text-white">${p.left}</span> はそのまま待機（次の段階で合体）</span>
+                  </div>
+                `;
+              }
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b-4 border-[#3e2410] pb-3 mb-4">
+          <h2 class="text-lg sm:text-2xl font-bold text-[#FFFF55] mc-shadow">
+            3️⃣ 金床での最短ペア合成手順（合計 ${selectedBooks.length} 冊）
+          </h2>
+          <span class="text-xs bg-[#55FF55] text-black font-bold px-2.5 py-1 rounded">
+            Too Expensive 完全回避ルート
+          </span>
+        </div>
+
+        <div class="space-y-3">
+          <!-- 準備する本の一覧 -->
+          <div class="mc-frame-inner p-3 rounded">
+            <div class="text-xs sm:text-sm font-bold text-[#55FF55] mb-2">
+              📦 最初に用意するエンチャント本（${selectedBooks.length}冊）
+            </div>
+            <div class="flex flex-wrap gap-2">
+              ${selectedBooks.map(b => `
+                <span class="enchanted-glint px-2.5 py-1 rounded text-xs sm:text-sm ${getMcColorClass(b.color)} font-bold">
+                  📘 ${b.name}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- ペア合成ステップ -->
+          ${roundsHtml}
+
+          <!-- 最終ステップ：新品装備に1回だけ適用 -->
+          <div class="bg-[#1e3b23] border-4 border-[#55FF55] p-4 rounded text-center space-y-2">
+            <div class="text-xs sm:text-sm text-[#FFFF55] font-bold">
+              ★ 最終仕上げ（装備を金床に入れるのはこの1回だけ！）
+            </div>
+            <div class="text-base sm:text-xl font-bold text-white mc-shadow">
+              ${equip.icon} 新品の「${equip.name.split(' ')[0]}」 ＋ 📕 完成した最強本（${selectedBooks.length}種入り）
+            </div>
+            <div class="text-sm sm:text-base text-[#55FF55] font-bold">
+              ✨ ペナルティ最小で最強の${equip.name.split(' ')[0]}が完成！
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 初期起動
+    window.addEventListener('DOMContentLoaded', () => {
+      selectEquipment('sword');
+    });
+  </script>
+</body>
+</html>
